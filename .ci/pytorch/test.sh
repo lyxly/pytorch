@@ -519,6 +519,36 @@ test_inductor_torchbench_smoketest_perf() {
   done
 }
 
+test_inductor_torchbench_cpu_smoketest_perf(){
+  TEST_REPORTS_DIR=$(pwd)/test/test-reports-cpu
+  mkdir -p "$TEST_REPORTS_DIR"
+
+  #set jemalloc
+  export LD_PRELOAD=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib/libiomp5.so:${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib/libjemalloc.so
+  export MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto,dirty_decay_ms:-1,muzzy_decay_ms:-1"
+
+  #multi_threads_test, resnet50 as example
+  MODELS_THRESHOLD=benchmarks/dynamo/ci_torchbench_models_list_cpu_threshold.csv
+  
+  for line in $(awk 'NR>1' $MODELS_THRESHOLD)
+  do
+    line=$(echo ${line} | tr "," " ")
+    model_config=($line)
+    model_name=${model_config[0]}
+    data_type=${model_config[1]}
+    model_threshold=${model_config[4]}
+    if [[ ${model_config[2]} == "dynamic" ]]; then shape_extra="--dynamic-shapes --dynamic-batch-only "; else shape_extra=""; fi
+    if [[ ${model_config[3]} == "cpp" ]]; then wrapper_extra="--cpp-wrapper "; else wrapper_extra=""; fi
+
+    python -m torch.backends.xeon.run_cpu --enable-jemalloc --node_id 0 benchmarks/dynamo/torchbench.py --performance \
+      --$data_type -dcpu -n50 --only $model_name $shape_extra $wrapper_extra --inference --freezing \
+      --timeout 9000 --backend=inductor --output "$TEST_REPORTS_DIR/inductor_inference_smoketest_cpu.csv"
+    # The threshold value needs to be actively maintained to make this check useful.
+    python benchmarks/dynamo/check_perf_csv.py -f "$TEST_REPORTS_DIR/inductor_inference_smoketest_cpu.csv" -t $model_threshold
+    rm $TEST_REPORTS_DIR/inductor_inference_smoketest_cpu.csv
+  done
+}
+
 test_python_gloo_with_tls() {
   source "$(dirname "${BASH_SOURCE[0]}")/run_glootls_test.sh"
   assert_git_not_dirty
@@ -1076,6 +1106,11 @@ elif [[ "${TEST_CONFIG}" == *torchbench* ]]; then
   if [[ "${TEST_CONFIG}" == *inductor_torchbench_smoketest_perf* ]]; then
     checkout_install_torchbench hf_Bert hf_Albert nanogpt timm_vision_transformer
     PYTHONPATH=$(pwd)/torchbench test_inductor_torchbench_smoketest_perf
+  elif [[ "${TEST_CONFIG}" == *inductor_torchbench_cpu_smoketest_perf* ]]; then
+    checkout_install_torchbench timm_vision_transformer phlippe_densenet basic_gnn_gcn \
+      llama_v2_7b_16h resnet50 timm_efficientnet mobilenet_v3_large timm_resnest \
+      shufflenet_v2_x1_0 hf_GPT2
+    PYTHONPATH=$(pwd)/torchbench test_inductor_torchbench_cpu_smoketest_perf
   else
     checkout_install_torchbench
     # Do this after checkout_install_torchbench to ensure we clobber any
