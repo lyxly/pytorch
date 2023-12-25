@@ -10,7 +10,7 @@ from ...utils._triton import has_triton
 from ..ir import FixedLayout
 
 from ..pattern_matcher import fwd_only, joint_fwd_bwd, Match, register_replacement
-from ..utils import use_cutlass_template
+from ..utils import use_cutlass_evt_template
 
 aten = torch.ops.aten
 
@@ -235,6 +235,7 @@ def should_pad_bench(
             m_padded_length = get_padded_length(m, get_alignment_size(mat1))
             k_padded_length = get_padded_length(k, get_alignment_size(mat1))
             n_padded_length = get_padded_length(n, get_alignment_size(mat2))
+            batchsize = 1
         elif op is torch.ops.aten.bmm:
             m = mat1.shape[1]
             k = mat2.shape[2]
@@ -243,6 +244,7 @@ def should_pad_bench(
             m_padded_length = get_padded_length(m, get_alignment_size(mat1))
             k_padded_length = get_padded_length(k, get_alignment_size(mat1))
             n_padded_length = get_padded_length(n, get_alignment_size(mat2))
+            batchsize = m[0]
         else:
             return False
 
@@ -250,9 +252,12 @@ def should_pad_bench(
             return False
 
         fake_layout = FixedLayout(
-            device=mat1.device, dtype=mat1.dtype, size=[n, m, n], stride=[n * m, n, 1]
+            device=mat1.device,
+            dtype=mat1.dtype,
+            size=[batchsize, m, n],
+            stride=[n * m, n, 1],
         )
-        if use_cutlass_template(fake_layout, m, n, k):
+        if use_cutlass_evt_template(fake_layout, m, n, k):
             # We cannot use I/O efficient Cutlass templates if the alignment doesn't meet TMA requirements
             return True
 

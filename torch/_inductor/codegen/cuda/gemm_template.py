@@ -417,7 +417,7 @@ class CUTLASSGemmTemplate(CUTLASSTemplate):
 
         """
         non_fuseable = non_fuseable and (
-            not inductor_cuda_config.cutlass_prefer_evt_capable_ops
+            not CUTLASSGemmTemplate.is_evt_preferred_for(input_nodes, layout)
         )
         if fuseable:
             cutlass_template_evt = CUTLASSGemmTemplate(
@@ -469,6 +469,24 @@ class CUTLASSGemmTemplate(CUTLASSTemplate):
             len(ops),
             len(ops_evt),
         )
+
+    @staticmethod
+    def is_evt_preferred_for(input_nodes, layout) -> bool:
+        prefer_evt_capable = inductor_cuda_config.cutlass_prefer_evt_capable_ops
+        if prefer_evt_capable:
+            m = input_nodes[0].get_size()[-2]
+            n = input_nodes[1].get_size()[-1]
+            k = input_nodes[0].get_size()[-1]
+            b = 1
+            if len(layout.size) > 2:
+                for i in range(len(layout.size) - 2):
+                    b *= layout.size[i]
+            problem_size = m * n * k * b
+            prefer_evt_capable = (
+                problem_size
+                >= inductor_cuda_config.cutlass_prefer_evt_capable_problem_size_threshold
+            )
+        return prefer_evt_capable
 
     def generate_retune_choices(
         self, ctb: CUDATemplateBuffer, epilogue_nodes: List[IRNode]

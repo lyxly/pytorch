@@ -853,7 +853,11 @@ def use_triton_template(layout, *, enable_int32=False):
 
 
 def use_cutlass_template(layout, m, n, k):
-    if m * n * k < config.cuda.cutlass_backend_min_gemm_size:
+    batch_size = 1
+    if len(layout.size) > 2:
+        for i in range(len(layout.size) - 2):
+            batch_size *= layout.size[i]
+    if batch_size * m * n * k < config.cuda.cutlass_backend_min_gemm_size:
         return False
     from .codegen.cuda.cutlass_utils import try_import_cutlass
 
@@ -875,6 +879,21 @@ def use_cutlass_template(layout, m, n, k):
             )
             return False
     return res
+
+
+def use_cutlass_evt_template(layout, m, n, k):
+    batch_size = 1
+    if len(layout.size) > 2:
+        for i in range(len(layout.size) - 2):
+            batch_size *= layout.size[i]
+    if (
+        batch_size * m * n * k
+        < config.cuda.cutlass_prefer_evt_capable_problem_size_threshold
+    ):
+        return False
+    if not use_cutlass_template(layout, m, n, k):
+        return False
+    return True
 
 
 def use_aten_gemm_kernels():

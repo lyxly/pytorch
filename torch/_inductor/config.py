@@ -644,6 +644,9 @@ class cuda:
     # are enabled for the CUTLASS backend.
     cutlass_prefer_evt_capable_ops: bool = False
 
+    # If cutlass_prefer_evt_capable_ops is set, prefer it only for GEMM problems larger than this
+    cutlass_prefer_evt_capable_problem_size_threshold = 1
+
     # Minimum of M*N*N to consider the CUTLASS backend for GEMM ops.
     cutlass_backend_min_gemm_size: int = 1
 
