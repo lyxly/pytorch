@@ -46,11 +46,11 @@ TEST(XpuDeviceTest, getGlobalIdFromDevice) {
   }
 
   int target_device = 0;
-  int global_id = at::xpu::getGlobalIdFromDevice(target_device);
+  int global_index = at::xpu::getGlobalIdFromDevice(target_device);
   auto devices = sycl::device::get_devices();
-  ASSERT_EQ_XPU(devices[global_id], at::xpu::get_raw_device(target_device));
+  ASSERT_EQ_XPU(devices[global_index], at::xpu::get_raw_device(target_device));
 
-  void* ptr = sycl::malloc_device(8, devices[global_id], at::xpu::get_device_context());
+  void* ptr = sycl::malloc_device(8, devices[global_index], at::xpu::get_device_context());
   at::Device device = at::xpu::getDeviceFromPtr(ptr);
   sycl::free(ptr, at::xpu::get_device_context());
   ASSERT_EQ_XPU(device.index(), target_device);
@@ -61,8 +61,8 @@ TEST(XpuDeviceTest, getGlobalIdFromDevice) {
   }
   // Test the last device.
   target_device = at::xpu::device_count() - 1;
-  global_id = at::xpu::getGlobalIdFromDevice(target_device);
-  ASSERT_EQ_XPU(devices[global_id], at::xpu::get_raw_device(target_device));
+  global_index = at::xpu::getGlobalIdFromDevice(target_device);
+  ASSERT_EQ_XPU(devices[global_index], at::xpu::get_raw_device(target_device));
 
   target_device = at::xpu::device_count();
   ASSERT_THROW(at::xpu::getGlobalIdFromDevice(target_device), c10::Error);

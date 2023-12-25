@@ -22,15 +22,15 @@ static c10::once_flag init_flag;
 static std::deque<c10::once_flag> device_prop_flags;
 static std::vector<DeviceProp> device_properties;
 
-static std::deque<c10::once_flag> device_global_id_flags;
-static std::vector<int> device_global_ids;
+static std::deque<c10::once_flag> device_global_index_flags;
+static std::vector<int> device_global_indexs;
 
 static void initXPUContextVectors() {
   num_gpus = c10::xpu::device_count();
   device_prop_flags.resize(num_gpus);
   device_properties.resize(num_gpus);
-  device_global_id_flags.resize(num_gpus);
-  device_global_ids.resize(num_gpus);
+  device_global_index_flags.resize(num_gpus);
+  device_global_indexs.resize(num_gpus);
 }
 
 static void initDeviceProperty(int device) {
@@ -48,7 +48,7 @@ static void initDeviceGlobalId(int device) {
   };
   auto it = std::find_if(devices.begin(), devices.end(), match_device);
   TORCH_CHECK(it != devices.end(), "Cant't find the global id of XPU device.");
-  device_global_ids[device] =
+  device_global_indexs[device] =
       static_cast<int>(std::distance(devices.begin(), it));
 }
 
@@ -83,8 +83,8 @@ int getGlobalIdFromDevice(int device) {
       ", total number of device is ",
       num_gpus,
       ".");
-  c10::call_once(device_global_id_flags[device], initDeviceGlobalId, device);
-  return device_global_ids[device];
+  c10::call_once(device_global_index_flags[device], initDeviceGlobalId, device);
+  return device_global_indexs[device];
 }
 
 } // namespace at::xpu
