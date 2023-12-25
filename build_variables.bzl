@@ -765,6 +765,10 @@ libtorch_python_cuda_sources = libtorch_python_cuda_core_sources + [
     "torch/csrc/cuda/Tensor.cpp",
 ]
 
+libtorch_python_xpu_sources = [
+    "torch/csrc/xpu/Module.cpp",
+]
+
 libtorch_python_core_sources = [
     "torch/csrc/DataLoader.cpp",
     "torch/csrc/Device.cpp",
