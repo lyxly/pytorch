@@ -6,7 +6,7 @@
 namespace at::xpu::detail {
 
 void XPUHooks::initXPU() const {
-  // TODO:
+  // TODO: the initialization of device allocator should be placed here.
 }
 
 bool XPUHooks::hasXPU() const {
