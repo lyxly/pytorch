@@ -854,9 +854,7 @@ class TestExtensionUtils(TestCase):
         with torch.autocast(device_type=custom_backend_name):
             pass
 
-        with patch("torch.cuda.is_available", lambda: False), patch(
-            "torch.xpu.is_available", lambda: False
-        ):
+        with patch("torch._utils._get_available_device_type", lambda: 'foo'):
             self.assertEqual(torch._utils._get_device_index('foo:1'), 1)
             self.assertEqual(torch._utils._get_device_index(torch.device("foo:2")), 2)
 

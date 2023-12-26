@@ -4,7 +4,7 @@ import sys
 import traceback
 import warnings
 from collections import defaultdict
-from typing import Any, DefaultDict, List
+from typing import Any, DefaultDict, List, Optional
 
 import torch
 
@@ -788,14 +788,24 @@ def _get_device_index(
     if isinstance(device, torch.device):
         if allow_cpu and device.type == "cpu":
             return -1
-        available_device_type = _get_available_device_type()
-        if available_device_type and device.type != available_device_type:
-            raise ValueError(
-                f"Expected a {available_device_type}{' or cpu' if allow_cpu else ''} device, but got: {device}"
-            )
+        if torch.jit.is_scripting():
+            if device.type != "cuda":
+                raise ValueError(
+                    f"Expected a cuda{' or cpu' if allow_cpu else ''} device, but got: {device}"
+                )
+        else:
+            # _get_available_device_type is an eager API which is not scriptable.
+            available_device_type = _get_available_device_type()
+            if available_device_type and device.type != available_device_type:
+                raise ValueError(
+                    f"Expected a {available_device_type}{' or cpu' if allow_cpu else ''} device, but got: {device}"
+                )
         if not allow_cpu and device.type == "cpu":
             raise ValueError(f"Expected a non cpu device, but got: {device}")
-        return device.index
+        # Syntax to support JIT mode.
+        device_idx: Optional[int] = device.index
+        if device_idx is not None:
+            return device_idx
     if not torch.jit.is_scripting() and _get_module_device():
         if isinstance(device, _get_module_device()):
             return device.idx

@@ -70,6 +70,7 @@ class _DeviceGuard:
 
 class device:
     r"""Context-manager that changes the selected device.
+
     Args:
         device (torch.device or int or str): device index to select. It's a no-op if
             this argument is a negative integer or ``None``.
@@ -89,8 +90,10 @@ class device:
 
 class device_of(device):
     r"""Context-manager that changes the current device to that of given object.
+
     You can use both tensors and storages as arguments. If a given object is
     not allocated on a XPU, this is a no-op.
+
     Args:
         obj (Tensor or Storage): object allocated on the selected device.
     """
@@ -102,6 +105,7 @@ class device_of(device):
 
 def set_device(device: _device_t) -> None:
     r"""Set the current device.
+
     Args:
         device (torch.device or int or str): selected device. This function is a
             no-op if this argument is negative.
@@ -113,11 +117,13 @@ def set_device(device: _device_t) -> None:
 
 def get_device_name(device: Optional[_device_t] = None) -> str:
     r"""Get the name of a device.
+
     Args:
         device (torch.device or int or str, optional): device for which to
             return the name. This function is a no-op if this argument is a
             negative integer. It uses the current device, given by :func:`~torch.xpu.current_device`,
             if :attr:`device` is ``None`` (default).
+
     Returns:
         str: the name of the device
     """
@@ -126,12 +132,14 @@ def get_device_name(device: Optional[_device_t] = None) -> str:
 
 def get_device_capability(device: Optional[_device_t] = None) -> Dict[str, Any]:
     r"""Get the xpu capability of a device.
+
     Args:
         device (torch.device or int or str, optional): device for which to
             return the device capability. This function is a no-op if this
             argument is a negative integer. It uses the current device, given by
             :func:`~torch.xpu.current_device`, if :attr:`device` is ``None``
             (default).
+
     Returns:
         Dict[str, Any]: the xpu capability dictionary of the device
     """
@@ -145,9 +153,11 @@ def get_device_capability(device: Optional[_device_t] = None) -> Dict[str, Any]:
 
 def get_device_properties(device: _device_t) -> _XpuDeviceProperties:
     r"""Get the properties of a device.
+
     Args:
         device (torch.device or int or str): device for which to return the
             properties of the device.
+
     Returns:
         _XpuDeviceProperties: the properties of the device
     """
@@ -164,6 +174,7 @@ def current_device() -> int:
 
 def _get_device(device: Union[int, str, torch.device]) -> torch.device:
     r"""Return the torch.device type object from the passed in device.
+
     Args:
         device (torch.device or int or str): selected device.
     """
