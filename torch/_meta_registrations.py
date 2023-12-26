@@ -5192,7 +5192,8 @@ def meta__sdpa_flash_cpu_backward(
     scale: Optional[float] = None,
 ):
     # cpus's grad layout is different from cuda's,
-    # i.e. (batch_size, seq_len，num_heads, head_dim）
+    # cpu:  (batch_size, seq_len，num_heads, head_dim）
+    # cuda: (batch_size, num_heads，seq_len, head_dim）
     batch_size = query.size(0)
     num_heads = query.size(1)
     head_dim = query.size(3)
