@@ -9,8 +9,6 @@ from .._utils import _dummy_type, _get_device_index
 
 _device_t = Union[_device, str, int, None]
 has_half: bool = True
-# TODO: Enable lazy init.
-torch._C._xpu_init()
 
 
 def _is_compiled() -> bool:
@@ -31,6 +29,11 @@ else:
 
     def _maybe_exchange_device(device: int) -> int:
         raise NotImplementedError("PyTorch was compiled without XPU support")
+
+
+# TODO: Enable lazy init.
+if _is_compiled():
+    torch._C._xpu_init()
 
 
 @lru_cache(maxsize=1)
