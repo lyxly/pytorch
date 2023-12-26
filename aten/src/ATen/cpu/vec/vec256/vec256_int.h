@@ -959,7 +959,7 @@ Vectorized<T> inline int_elementwise_binary_256(const Vectorized<T>& a, const Ve
 
 template <>
 Vectorized<int8_t> inline operator*(const Vectorized<int8_t>& a, const Vectorized<int8_t>& b) {
-  // We don't have an instruction for multiplying int8_t
+  // We don't have an instruction for multiplying int8_t, so upcast to int16_t and then mask
 #ifndef CPU_CAPABILITY_AVX2
   return int_elementwise_binary_256(a, b, std::multiplies<int8_t>());
 #else
