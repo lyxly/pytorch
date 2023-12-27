@@ -526,6 +526,11 @@ test_inductor_torchbench_cpu_smoketest_perf(){
   #set jemalloc
   export LD_PRELOAD=$(dirname $(which python))/../lib/libjemalloc.so
   export MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto,dirty_decay_ms:-1,muzzy_decay_ms:-1"
+  export KMP_AFFINITY=granularity=fine,compact,1,0
+  export KMP_BLOCKTIME=1
+  CORES=$(lscpu | grep Core | awk '{print $4}')
+  export OMP_NUM_THREADS=$CORES
+  end_core=$(expr $CORES - 1)
 
   MODELS_SPEEDUP_TARGET=benchmarks/dynamo/expected_ci_speedup_inductor_torchbench_cpu.csv
   
@@ -540,7 +545,7 @@ test_inductor_torchbench_cpu_smoketest_perf(){
     if [[ ${model_cfg[3]} == "cpp" ]]; then wrapper_extra="--cpp-wrapper "; else wrapper_extra=""; fi
     output_name="$TEST_REPORTS_DIR/inductor_inference_${model_cfg[0]}_${model_cfg[1]}_${model_cfg[2]}_${model_cfg[3]}_cpu_smoketest.csv"
 
-    python -m torch.backends.xeon.run_cpu --enable-jemalloc --node_id 0 benchmarks/dynamo/torchbench.py \
+    numactl -C 0-${end_core} -m 0 python benchmarks/dynamo/torchbench.py \
       --inference --performance --$data_type -dcpu -n50 --only $model_name $shape_extra $wrapper_extra \
       --freezing --timeout 9000 --backend=inductor --output $output_name
     # The threshold value needs to be actively maintained to make this check useful.

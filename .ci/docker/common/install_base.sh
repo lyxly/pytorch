@@ -74,6 +74,7 @@ install_ubuntu() {
     libtool \
     vim \
     unzip \
+    numactl \
     gdb
 
   # Should resolve issues related to various apt package repository cert issues
@@ -120,6 +121,7 @@ install_centos() {
     wget \
     vim \
     unzip \
+    numactl \
     gdb
 
   # Cleanup
