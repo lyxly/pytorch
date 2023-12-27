@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 # NOTE: Please update this value if any modifications are made to the schema
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = (2, 1)
 TREESPEC_VERSION = 1
 
 # TODO (zhxchen17) Move to a separate file.
@@ -337,10 +337,16 @@ class GraphModule:
 
 
 @dataclass
+class SchemaVersion:
+    major: int  # Major version number is bumped every time a breaking change is made.
+    minor: int  # Minor version number is bumped when a compatible change is made.
+
+
+@dataclass
 class ExportedProgram:
     graph_module: GraphModule
     # Key is the opset namespace (ex. aten), and value is the version number
     opset_version: Dict[str, int]
     range_constraints: Dict[str, RangeConstraint]
-    schema_version: int
+    schema_version: SchemaVersion
     dialect: str
