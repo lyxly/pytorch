@@ -252,6 +252,11 @@ class VariableBuilder:
             TensorWithTFOverrideVariable,
             UserDefinedObjectVariable,
             NumpyNdarrayVariable,
+            UserDefinedObjectVariable,
+            FSDPManagedNNModuleVariable,
+            UserDefinedClassVariable,
+            NumpyNdarrayVariable,
+            DeviceMeshVariable,
         ]:
             return True
         return False
@@ -590,7 +595,7 @@ class VariableBuilder:
             return StreamVariable(
                 None,
                 value,
-                value.device.type,
+                value.device,
                 source=self.source,
             )
         elif isinstance(value, _EventBase):
@@ -887,7 +892,9 @@ class VariableBuilder:
             and not config.allow_rnn
         ):
             unimplemented("TorchDynamo purposely graph breaks on RNN, GRU, LSTMs")
-        if mutation_guard.is_dynamic_nn_module(value):
+        if mutation_guard.is_dynamic_nn_module(value) and not getattr(
+            value, "_is_fsdp_managed_module", False
+        ):
             # created dynamically, don't specialize on it
             self.install_guards(GuardBuilder.TYPE_MATCH)
             result = UnspecializedNNModuleVariable(value, source=self.source)
@@ -926,8 +933,19 @@ class VariableBuilder:
             #
             # ID_MATCH is required to disambiguate cases as simple as a unit test that constructs 2 models and wraps
             # them differently with different FSDP configs.  (test_dynamo_distributed.py -k test_fsdp_aot_eager)
+            base = self.name
+            name = self.name
+            for i in itertools.count():
+                if name not in self.tx.output.nn_modules:
+                    self.tx.output.nn_modules[name] = value
+                    break
+                name = f"{base}_{i}"
             self.install_guards(GuardBuilder.TYPE_MATCH, GuardBuilder.ID_MATCH)
-            return FSDPManagedNNModuleVariable(value, source=self.get_source())
+            return FSDPManagedNNModuleVariable(
+                value,
+                name,
+                source=self.get_source(),
+            )
         else:
             return self.tx.output.register_attr_or_module(
                 value,
@@ -1510,7 +1528,9 @@ def wrap_fx_proxy_cls(
         elif istype(example_value, (list, immutable_list)):
             return ListVariable(unpacked, mutable_local=MutableLocal(), **options)
         elif istype(example_value, set):
-            return SetVariable(unpacked, mutable_local=MutableLocal(), **options)
+            return SetVariable(
+                self.tx, unpacked, mutable_local=MutableLocal(), **options
+            )
         else:
             assert example_value.__class__.__module__ == "torch.return_types" or hasattr(
                 example_value, "_fields"
@@ -1529,9 +1549,7 @@ def wrap_fx_proxy_cls(
         for _, device_interface in get_registered_device_interfaces()
     ]:
         proxy.node.meta["example_value"] = example_value
-        return StreamVariable(
-            proxy, example_value, example_value.device.type, **options
-        )
+        return StreamVariable(proxy, example_value, example_value.device, **options)
     elif (
         inspect.isclass(proxy.node.target) and issubclass(proxy.node.target, _EventBase)
     ) or proxy.node.target in [
@@ -1563,15 +1581,18 @@ def wrap_fx_proxy_cls(
         getattr(torch.distributed, "get_world_size", _missing),
         # This always wants to be in the graph, even if the constraint
         # results in a constant int
+        torch.initial_seed,
         torch._constrain_as_value,
         torch._constrain_as_size,
     ]:
         proxy.node.meta["example_value"] = example_value
         return ConstantVariable.create(example_value, **options)
+    elif isinstance(example_value, int):
+        return ConstantVariable.create(example_value, **options)
     else:
         unimplemented(
             "torch.* op returned non-Tensor "
-            + f"{typestr(example_value)} {proxy.node.op} {proxy.node.target}"
+            + f"{typestr(example_value)}  {proxy.node.op} {proxy.node.target}"
         )
 
 
@@ -1907,7 +1928,7 @@ class SourcelessBuilder:
             )
         elif isinstance(value, set):
             return SetVariable(
-                [self(tx, x) for x in value], mutable_local=MutableLocal()
+                tx, [self(tx, x) for x in value], mutable_local=MutableLocal()
             )
         elif isinstance(value, (tuple, list)):
             cls = BaseListVariable.cls_for(type(value))
