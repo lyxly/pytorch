@@ -1,4 +1,4 @@
-name,data_type,shape,wrapper,threshold
+name,data_type,shape,wrapper,perf_speedup_target_c5_12xlarge
 timm_vision_transformer,float32,static,default,1.1585628
 phlippe_densenet,float32,static,default,1.9761474
 basic_gnn_gcn,float32,dynamic,default,1.1413656

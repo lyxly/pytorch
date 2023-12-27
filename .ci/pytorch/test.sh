@@ -520,32 +520,31 @@ test_inductor_torchbench_smoketest_perf() {
 }
 
 test_inductor_torchbench_cpu_smoketest_perf(){
-  TEST_REPORTS_DIR=$(pwd)/test/test-reports-cpu
+  TEST_REPORTS_DIR=$(pwd)/test/test-reports
   mkdir -p "$TEST_REPORTS_DIR"
 
   #set jemalloc
-  export LD_PRELOAD=${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib/libiomp5.so:${CONDA_PREFIX:-"$(dirname $(which conda))/../"}/lib/libjemalloc.so
+  export LD_PRELOAD=$(dirname $(which python))/../lib/libjemalloc.so
   export MALLOC_CONF="oversize_threshold:1,background_thread:true,metadata_thp:auto,dirty_decay_ms:-1,muzzy_decay_ms:-1"
 
-  #multi_threads_test, resnet50 as example
-  MODELS_THRESHOLD=benchmarks/dynamo/ci_torchbench_models_list_cpu_threshold.csv
+  MODELS_SPEEDUP_TARGET=benchmarks/dynamo/expected_ci_speedup_inductor_torchbench_cpu.csv
   
-  for line in $(awk 'NR>1' $MODELS_THRESHOLD)
+  for line in $(awk 'NR>1' $MODELS_SPEEDUP_TARGET)
   do
     line=$(echo ${line} | tr "," " ")
-    model_config=($line)
-    model_name=${model_config[0]}
-    data_type=${model_config[1]}
-    model_threshold=${model_config[4]}
-    if [[ ${model_config[2]} == "dynamic" ]]; then shape_extra="--dynamic-shapes --dynamic-batch-only "; else shape_extra=""; fi
-    if [[ ${model_config[3]} == "cpp" ]]; then wrapper_extra="--cpp-wrapper "; else wrapper_extra=""; fi
+    model_cfg=($line)
+    model_name=${model_cfg[0]}
+    data_type=${model_cfg[1]}
+    speedup_target=${model_cfg[4]}
+    if [[ ${model_cfg[2]} == "dynamic" ]]; then shape_extra="--dynamic-shapes --dynamic-batch-only "; else shape_extra=""; fi
+    if [[ ${model_cfg[3]} == "cpp" ]]; then wrapper_extra="--cpp-wrapper "; else wrapper_extra=""; fi
+    output_name="$TEST_REPORTS_DIR/inductor_inference_${model_cfg[0]}_${model_cfg[1]}_${model_cfg[2]}_${model_cfg[3]}_cpu_smoketest.csv"
 
-    python -m torch.backends.xeon.run_cpu --enable-jemalloc --node_id 0 benchmarks/dynamo/torchbench.py --performance \
-      --$data_type -dcpu -n50 --only $model_name $shape_extra $wrapper_extra --inference --freezing \
-      --timeout 9000 --backend=inductor --output "$TEST_REPORTS_DIR/inductor_inference_smoketest_cpu.csv"
+    python -m torch.backends.xeon.run_cpu --enable-jemalloc --node_id 0 benchmarks/dynamo/torchbench.py \
+      --inference --performance --$data_type -dcpu -n50 --only $model_name $shape_extra $wrapper_extra \
+      --freezing --timeout 9000 --backend=inductor --output $output_name
     # The threshold value needs to be actively maintained to make this check useful.
-    python benchmarks/dynamo/check_perf_csv.py -f "$TEST_REPORTS_DIR/inductor_inference_smoketest_cpu.csv" -t $model_threshold
-    rm $TEST_REPORTS_DIR/inductor_inference_smoketest_cpu.csv
+    python benchmarks/dynamo/check_perf_csv.py -f $output_name -t $speedup_target
   done
 }
 

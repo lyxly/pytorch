@@ -298,8 +298,3 @@ pywavelets==1.4.1
 # it here because 1.5.0 conflicts with numpy 1.21.2 used in CI
 #Pinned versions: 1.4.1
 #test that import:
-
-jemalloc==5.2.1
-#Description: Used for Inductor cpu performance benchmark tests
-#Pinned versions: 5.2.1
-#test that import:test_inductor_torchbench_cpu_smoketest_perf
